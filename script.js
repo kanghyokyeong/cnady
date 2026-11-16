@@ -1,0 +1,25 @@
+const products=[
+{id:1,name:'무지개 막대사탕 세트',desc:'알록달록 기분까지 상큼하게',price:2500,img:'img/lollipops.jpg',tag:'BEST'},
+{id:2,name:'말랑말랑 곰돌이 젤리',desc:'쫀득한 식감의 과일 젤리',price:3800,img:'img/gummy-bears.jpg',tag:'인기'},
+{id:3,name:'하트 봉지사탕',desc:'사랑스러운 컬러의 달콤함',price:2900,img:'img/heart-candy.jpg',tag:'NEW'},
+{id:4,name:'컬러풀 믹스 캔디',desc:'한 병 가득 다양한 맛으로',price:3500,img:'img/wrapped-candy.jpg',tag:'추천'}
+];
+let cart=JSON.parse(localStorage.getItem('sweetCart')||'[]');
+let user=JSON.parse(localStorage.getItem('sweetUser')||'null');
+let ebooks=JSON.parse(localStorage.getItem('sweetEbooks')||'[]');
+const won=n=>n.toLocaleString('ko-KR')+'원';
+function renderProducts(){document.getElementById('productGrid').innerHTML=products.map(p=>`<article class="product"><img src="${p.img}" alt="${p.name}"><div class="product-info"><span class="tag">${p.tag}</span><h3>${p.name}</h3><p class="desc">${p.desc}</p><div class="price-line"><span class="price">${won(p.price)}</span><button class="add" onclick="addCart(${p.id})">담기 +</button></div></div></article>`).join('');}
+function saveCart(){localStorage.setItem('sweetCart',JSON.stringify(cart));document.getElementById('cartCount').textContent=cart.reduce((s,x)=>s+x.qty,0);}
+function addCart(id){let item=cart.find(x=>x.id===id);if(item)item.qty++;else cart.push({id,qty:1});saveCart();toast('장바구니에 담았어요!');}
+function openCart(){renderCart();openModal('cartModal')}
+function renderCart(){let el=document.getElementById('cartItems');if(!cart.length){el.innerHTML='<p class="muted">장바구니가 비어 있어요. 달콤한 상품을 담아보세요!</p>';document.getElementById('cartTotal').textContent=won(0);return;}el.innerHTML=cart.map(x=>{let p=products.find(p=>p.id===x.id);return `<div class="cart-row"><div><b>${p.name}</b><br>${won(p.price)}</div><div class="qty"><button onclick="changeQty(${x.id},-1)">−</button>${x.qty}<button onclick="changeQty(${x.id},1)">+</button></div></div>`}).join('');document.getElementById('cartTotal').textContent=won(cart.reduce((s,x)=>s+products.find(p=>p.id===x.id).price*x.qty,0));}
+function changeQty(id,d){let x=cart.find(x=>x.id===id);x.qty+=d;if(x.qty<=0)cart=cart.filter(y=>y.id!==id);saveCart();renderCart();}
+function checkout(){if(!cart.length){toast('장바구니가 비어 있어요.');return;}if(!user){closeModals();openModal('loginModal');toast('주문하려면 먼저 로그인해 주세요.');return;}let amount=cart.reduce((s,x)=>s+products.find(p=>p.id===x.id).price*x.qty,0);let rate=user.spent>=100000?.05:user.spent>=50000?.03:.01;let points=Math.floor(amount*rate);user.spent=(user.spent||0)+amount;user.points=(user.points||0)+points;localStorage.setItem('sweetUser',JSON.stringify(user));cart=[];saveCart();closeModals();toast(`데모 주문 완료! ${points.toLocaleString()}P 적립되었어요.`);}
+function openModal(id){closeModals();document.getElementById(id).classList.add('show')}
+function closeModals(){document.querySelectorAll('.modal-backdrop').forEach(x=>x.classList.remove('show'))}
+function join(){let name=document.getElementById('joinName').value.trim(),email=document.getElementById('joinEmail').value.trim(),pw=document.getElementById('joinPw').value;if(!name||!email||pw.length<4){toast('모든 항목을 입력하고 비밀번호는 4자 이상 설정해 주세요.');return;}if(localStorage.getItem('sweetUser')){toast('현재 데모는 브라우저당 1개 회원만 지원해요.');return;}user={name,email,pw,points:1000,spent:0};localStorage.setItem('sweetUser',JSON.stringify(user));closeModals();toast('가입 완료! 1,000P를 지급했어요.');}
+function login(){let email=document.getElementById('loginEmail').value.trim(),pw=document.getElementById('loginPw').value;let saved=JSON.parse(localStorage.getItem('sweetUser')||'null');if(!saved||saved.email!==email||saved.pw!==pw){toast('회원 정보가 일치하지 않아요. 먼저 가입해 주세요.');return;}user=saved;closeModals();toast(`${user.name}님, 환영해요! 보유 포인트 ${user.points.toLocaleString()}P`);}
+function buyEbook(name,price){if(!user){toast('전자책 구매 전 회원가입 또는 로그인이 필요해요.');openModal('loginModal');return;}if(!ebooks.includes(name)){ebooks.push(name);localStorage.setItem('sweetEbooks',JSON.stringify(ebooks));}user.points=(user.points||0)+Math.floor(price*(user.spent>=100000?.05:user.spent>=50000?.03:.01));localStorage.setItem('sweetUser',JSON.stringify(user));document.getElementById('readerTitle').textContent='📖 '+name;document.getElementById('readerBody').textContent=`${name}\\n\\n구매해 주셔서 감사합니다!\\n\\n이곳은 전자책 즉시 열람 기능을 보여주는 미리보기 페이지입니다. 실제 서비스에서는 구매가 확인되는 즉시 PDF 또는 웹뷰어 콘텐츠를 회원의 내 서재에 자동으로 연결합니다.\\n\\n오늘도 달콤하고 즐거운 하루 보내세요. ♡`;openModal('readerModal');}
+function toast(msg){let t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
+const slides=['img/lollipops.jpg','img/gummy-bears.jpg','img/heart-candy.jpg','img/wrapped-candy.jpg'];let slide=0;setInterval(()=>{slide=(slide+1)%slides.length;let im=document.getElementById('heroPhoto');im.style.opacity=0;setTimeout(()=>{im.src=slides[slide];im.style.opacity=1;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===slide));},300)},4200);
+renderProducts();saveCart();
